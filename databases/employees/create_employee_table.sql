@@ -18,3 +18,36 @@ CREATE TABLE employee_roles (
     override_permissions NVARCHAR(MAX) NULL,
     [name] nvarchar(50) NOT NULL
 )
+
+USE employees
+GO
+CREATE TRIGGER [dbo].[trg_insert_employee]
+ON [dbo].[employee_roles]
+AFTER INSERT
+AS
+BEGIN
+    -- Ensure UUID is generated for rows where it is NULL
+    UPDATE emp
+    SET emp.uuid = NEWID()
+    FROM employee_roles emp
+    INNER JOIN inserted i ON emp.index_key = i.index_key
+    WHERE emp.uuid IS NULL;
+
+    -- Populate reference_key and change_log for newly inserted rows
+    UPDATE emp
+    SET
+        emp.reference_key = 'EMP-' + RIGHT('000000' + CAST(emp.index_key AS VARCHAR), 6),
+        emp.change_log = 'Created on ' + CONVERT(NVARCHAR, GETDATE(), 120)
+    FROM employee_roles emp
+    INNER JOIN inserted i ON emp.index_key = i.index_key;
+
+    -- Insert into activity_logs only if UUID is not NULL
+    INSERT INTO logs.dbo.activity_logs (log_id, change_log, update_by, table_name)
+    SELECT 
+        i.uuid AS log_id, -- Use the UUID column
+        i.change_log + CONVERT(NVARCHAR, GETDATE(), 120) AS change_log,
+        i.update_by AS update_by, -- Replace with appropriate value
+        'emplyee' AS table_name
+    FROM inserted i
+    WHERE i.uuid IS NOT NULL; -- Ensure UUID is not NULL
+END
