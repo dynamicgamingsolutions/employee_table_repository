@@ -31,7 +31,7 @@ BEGIN
     UPDATE ro
     SET
         ro.reference_key = 'RT-' + RIGHT('000' + CAST(ro.index_key AS VARCHAR), 3),
-        ro.change_log = 'Created on ' + CONVERT(NVARCHAR, GETDATE(), 120)
+        ro.change_log = ISNULL(ro.change_log, 'Created on ' + CONVERT(NVARCHAR, GETDATE(), 120)) -- Ensure change_log is not NULL
     FROM roles ro
     INNER JOIN inserted i ON ro.index_key = i.index_key;
 
@@ -39,7 +39,7 @@ BEGIN
     INSERT INTO logs.dbo.activity_logs (log_id, change_log, update_by, table_name)
     SELECT 
         i.uuid AS log_id, -- Use the UUID column
-        i.change_log + CONVERT(NVARCHAR, GETDATE(), 120) AS change_log,
+        ISNULL(i.change_log, 'Created on ' + CONVERT(NVARCHAR, GETDATE(), 120)) AS change_log, -- Ensure change_log is not NULL
         i.update_by AS update_by, -- Replace with appropriate value
         'roles' AS table_name
     FROM inserted i
