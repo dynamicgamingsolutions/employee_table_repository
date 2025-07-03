@@ -37,7 +37,7 @@ BEGIN
     UPDATE emp
     SET
         emp.reference_key = 'EMP-' + RIGHT('000000' + CAST(emp.index_key AS VARCHAR), 6),
-        emp.change_log = 'Created on ' + CONVERT(NVARCHAR, GETDATE(), 120)
+        emp.change_log = ISNULL(emp.change_log, 'Created on ' + CONVERT(NVARCHAR, GETDATE(), 120)) -- Ensure change_log is not NULL
     FROM employee_roles emp
     INNER JOIN inserted i ON emp.index_key = i.index_key;
 
@@ -45,9 +45,10 @@ BEGIN
     INSERT INTO logs.dbo.activity_logs (log_id, change_log, update_by, table_name)
     SELECT 
         i.uuid AS log_id, -- Use the UUID column
-        i.change_log + CONVERT(NVARCHAR, GETDATE(), 120) AS change_log,
+        ISNULL(i.change_log, 'Created on ' + CONVERT(NVARCHAR, GETDATE(), 120)) AS change_log, -- Ensure change_log is not NULL
         i.update_by AS update_by, -- Replace with appropriate value
-        'emplyee' AS table_name
+        'employee_roles' AS table_name -- Corrected table name
     FROM inserted i
     WHERE i.uuid IS NOT NULL; -- Ensure UUID is not NULL
 END
+GO
